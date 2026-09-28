@@ -148,3 +148,19 @@ export function createAnalysedFeatures(analysis) {
     },
   };
 }
+
+/**
+ * Analyses embedded in a bundled page store each feature as 8-bit samples in
+ * base64 (see tools/build-bundle.mjs); expand them back to Float32Arrays.
+ */
+export function unpackAnalysis(packed) {
+  const out = { ...packed };
+  delete out.packed;
+  for (const [name, b64] of Object.entries(packed.packed || {})) {
+    const bin = atob(b64);
+    const arr = new Float32Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i) / 255;
+    out[name] = arr;
+  }
+  return out;
+}

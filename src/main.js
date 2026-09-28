@@ -2,7 +2,7 @@ import './fonts.css';
 import * as THREE from 'three';
 import { Director } from './core/director.js';
 import { loadFonts } from './core/text.js';
-import { createSyntheticFeatures, createAnalysedFeatures } from './core/features.js';
+import { createSyntheticFeatures, createAnalysedFeatures, unpackAnalysis } from './core/features.js';
 import { SCHEDULE } from './scenes/index.js';
 import { SONG, BAR, BEAT, SECTIONS } from './core/song.js';
 
@@ -217,6 +217,10 @@ async function startPlayer() {
       console.error(err);
       statusEl.textContent = '无法解码该音频，仍可播放 · could not decode, playing anyway';
     }
+    return attachAudio(el);
+  }
+
+  function attachAudio(el) {
     if (audio) audio.pause();
     audio = el;
     mediaSource = null;
@@ -249,6 +253,35 @@ async function startPlayer() {
     begin();
     setPlaying(true);
   };
+  // ------------------------------------------------ built-in music
+  // `npm run bundle` embeds a recording and its pre-computed analysis in the
+  // page (window.__MT_BUNDLE__), so the film plays in sync with no setup.
+  const bundle = window.__MT_BUNDLE__;
+  if (bundle) {
+    const playBtn = $('play-silent');
+    playBtn.disabled = true;
+    $('load').hidden = true;
+    statusEl.textContent = '载入内置音乐 · loading music…';
+    try {
+      const blob = await (await fetch(`data:${bundle.mime};base64,${bundle.audio}`)).blob();
+      const el = new Audio();
+      el.preload = 'auto';
+      el.src = URL.createObjectURL(blob);
+      features = createAnalysedFeatures(unpackAnalysis(bundle.analysis));
+      director.setFeatures(features);
+      attachAudio(el);
+      playBtn.textContent = '▶ 播放 · Play';
+      playBtn.classList.remove('alt');
+      document.querySelector('.note').textContent = '音乐已内置，画面与鼓点逐拍同步。建议全屏观看（按 F）。';
+      statusEl.textContent = '';
+    } catch (err) {
+      console.error(err);
+      $('load').hidden = false;
+      statusEl.textContent = '内置音乐载入失败，可手动载入音乐文件 · could not load the built-in music';
+    }
+    playBtn.disabled = false;
+  }
+
   window.addEventListener('dragover', (e) => {
     e.preventDefault();
     document.body.classList.add('dragging');

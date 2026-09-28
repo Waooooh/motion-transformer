@@ -13,7 +13,8 @@
     "analyze": "node tools/analyze.mjs",
     "render": "node tools/render.mjs",
     "stills": "node tools/stills.mjs",
-    "build:artifact": "node tools/build-artifact.mjs"
+    "build:artifact": "node tools/build-artifact.mjs",
+    "bundle": "node tools/build-bundle.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"
