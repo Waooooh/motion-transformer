@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-single/
+out/
+*.log
+.DS_Store
+# music is never committed — bring your own copy of the track
+audio/*
+!audio/README.md

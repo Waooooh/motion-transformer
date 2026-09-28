@@ -1,0 +1,25 @@
+{
+  "name": "motion-transformer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ATTENTION — a synthwave promo film about neural networks and the Transformer, rendered in real time with Three.js and synced to \"Hong Kong Story\" by Lazer Boomerang (80 BPM).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview",
+    "fonts": "node tools/fetch-fonts.mjs",
+    "analyze": "node tools/analyze.mjs",
+    "render": "node tools/render.mjs",
+    "stills": "node tools/stills.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "vite": "^8.3.1",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}
