@@ -6,6 +6,8 @@
 一部完全由代码生成的 3 分 56 秒宣传片：Three.js 实时渲染，每一帧都是“歌曲时间”的纯函数，
 画面的段落、转场和脉冲都卡在 **Lazer Boomerang《Hong Kong Story》**（80 BPM）的小节与鼓点上。
 
+![分镜截图](docs/storyboard.jpg)
+
 - 🎵 音乐：[Hong Kong Story — Lazer Boomerang (Spotify)](https://open.spotify.com/track/3egnvac0kettJ7Er5x7u0W)
 - 🎞 两种观看方式：浏览器实时播放（可载入音乐、可录制），或离线渲染成 MP4（自动对齐并混入音乐）
 

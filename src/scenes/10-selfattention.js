@@ -80,17 +80,20 @@ export default function selfAttentionScene() {
   );
   const qkvLabels = QKV.map((q, qi) => {
     const m = textMesh({
-      text: ['Q  query', 'K  key', 'V  value'][qi],
-      family: FAMILY.mono,
-      size: 60,
+      text: ['Q  query · 查询', 'K  key · 键', 'V  value · 值'][qi],
+      family: FAMILY.zh,
+      weight: 500,
+      size: 30 * 2,
+      letterSpacing: 4,
       color: ['#ffc4f1', '#bff6ff', '#ffe3a3'][qi],
       glow: 8,
       glowColor: [HEX.pink, HEX.cyan, HEX.amber][qi],
-      pxPerUnit: 300,
-      anchor: 'right',
+      pxPerUnit: 2,
+      anchor: 'left',
+      depthTest: false,
     });
-    m.position.set(tokenX(0) - 0.75, TY + 0.55 + colH - 0.35 - qi * 0.55, 0);
-    stage.add(m);
+    m.position.set(-880, 440 - qi * 52, 0);
+    hud.add(m);
     return m;
   });
 
@@ -115,7 +118,7 @@ export default function selfAttentionScene() {
     const g = new THREE.PlaneGeometry(0.5, 1);
     g.translate(0, 0.5, 0);
     const m = new THREE.Mesh(g, barMat(j === 1 ? PALETTE.amber : PALETTE.pink));
-    m.position.set(tokenX(j), TY - 1.25, 0.1);
+    m.position.set(tokenX(j), TY - 2.35, 0.1);
     m.scale.y = 0.001;
     stage.add(m);
     return m;
@@ -215,12 +218,13 @@ export default function selfAttentionScene() {
         const soft = ease.inOutCubic(clamp((lt - TS) / 0.6));
         const w = lerp(0.5, 0.25 + IT_P[j] * 5, soft);
         lines.set(j, 0, r, w * (1 - up * 0.85) * (1 + (j === 1 ? hit(lt, TS + 0.6, 0.6) * 2 : 0)), r < 1 ? r : -1);
-        const hScore = scores[j] * 0.28;
-        const hProb = IT_P[j] * 3.2;
+        const hScore = scores[j] * 0.26;
+        const hProb = IT_P[j] * 1.7;
         const h = lerp(hScore, hProb, soft) * ease.outCubic(clamp((lt - t0 - 0.2) / 0.4));
         bars[j].scale.y = Math.max(0.001, h);
+        bars[j].visible = h > 0.01;
         bars[j].material.opacity = 0.75 * (1 - up) * (1 - smoothstep(TV + 1.5, TV + 2.2, lt));
-        pctLabels[j].position.set(tokenX(j), TY - 1.35 + h + 0.22, 0.1);
+        pctLabels[j].position.set(tokenX(j), TY - 2.35 + h + 0.2, 0.1);
         pctLabels[j].material.opacity = smoothstep(TS + 0.5, TS + 0.8, lt) * (1 - up) * (j === 1 || IT_P[j] >= 0.06 ? 1 : 0.55);
       }
       lines.commit();
