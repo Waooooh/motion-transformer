@@ -87,6 +87,23 @@ async function startPlayer() {
   $('quality').value = q >= 1920 ? '1920' : '1280';
   buildPipeline(q >= 1920 ? 1920 : 1280);
 
+  // Build and compile every scene up front so playback never hitches.
+  const buttons = [$('load'), $('play-silent')];
+  buttons.forEach((b) => (b.disabled = true));
+  async function warmup() {
+    const n = director.entries.length;
+    for (let i = 0; i < n; i++) {
+      const e = director.entries[i];
+      statusEl.textContent = `准备场景 · preparing ${i + 1}/${n}`;
+      await new Promise((r) => setTimeout(r, 0));
+      director.renderAt(e.t0 + Math.min(1.5, (e.t1 - e.t0) / 2), 0);
+    }
+    statusEl.textContent = '';
+    buttons.forEach((b) => (b.disabled = false));
+  }
+  await warmup();
+  const IDLE_T = 39.4; // the title card sits behind the start screen
+
   const clock = { playing: false, t: +params.get('t') || 0, last: performance.now() };
   let audio = null;
   let audioCtx = null;
@@ -142,10 +159,15 @@ async function startPlayer() {
   window.addEventListener('pointermove', wake);
 
   $('pp').onclick = () => setPlaying(!clock.playing);
-  $('fs').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
-  $('quality').onchange = (e) => {
+  $('fs').onclick = () => {
+    const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
+    Promise.resolve(p).catch(() => toast('此环境不支持全屏 · fullscreen is not available here'));
+  };
+  if (import.meta.env.MODE === 'artifact') $('rec').remove();
+  $('quality').onchange = async (e) => {
     buildPipeline(+e.target.value);
     toast(`渲染分辨率 ${height}p`);
+    await warmup();
   };
   const scrub = (e) => {
     const r = tl.getBoundingClientRect();
@@ -211,6 +233,7 @@ async function startPlayer() {
     if (begun) return;
     begun = true;
     intro.classList.add('hidden');
+    if (!params.has('t')) seek(0);
     wake();
   }
   $('load').onclick = () => $('file').click();
@@ -243,47 +266,51 @@ async function startPlayer() {
   });
 
   // ------------------------------------------------ recording
-  $('rec').onclick = () => {
-    if (recorder) {
-      recorder.stop();
-      return;
-    }
-    const tracks = [...canvas.captureStream(60).getVideoTracks()];
-    if (audio) {
-      audioCtx = audioCtx || new AudioContext();
-      if (!mediaSource) {
-        mediaSource = audioCtx.createMediaElementSource(audio);
-        mediaSource.connect(audioCtx.destination);
+  // (left out of the Artifact build: artifact pages cannot hand out files)
+  if (import.meta.env.MODE !== 'artifact') {
+    const recBtn = $('rec');
+    if (recBtn) recBtn.onclick = () => {
+      if (recorder) {
+        recorder.stop();
+        return;
       }
-      const dest = audioCtx.createMediaStreamDestination();
-      mediaSource.connect(dest);
-      tracks.push(...dest.stream.getAudioTracks());
-    } else {
-      toast('未载入音乐：将录制无声视频 · recording without music');
-    }
-    const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m));
-    const chunks = [];
-    recorder = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: height >= 1080 ? 24e6 : 12e6 });
-    recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'video/webm' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `attention-transformer-${height}p.webm`;
-      a.click();
-      recorder = null;
-      $('rec').classList.remove('on');
-      $('rec').textContent = '● REC';
-      toast('录制完成，已下载 · saved');
+      const tracks = [...canvas.captureStream(60).getVideoTracks()];
+      if (audio) {
+        audioCtx = audioCtx || new AudioContext();
+        if (!mediaSource) {
+          mediaSource = audioCtx.createMediaElementSource(audio);
+          mediaSource.connect(audioCtx.destination);
+        }
+        const dest = audioCtx.createMediaStreamDestination();
+        mediaSource.connect(dest);
+        tracks.push(...dest.stream.getAudioTracks());
+      } else {
+        toast('未载入音乐：将录制无声视频 · recording without music');
+      }
+      const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m));
+      const chunks = [];
+      recorder = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: height >= 1080 ? 24e6 : 12e6 });
+      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `attention-transformer-${height}p.webm`;
+        a.click();
+        recorder = null;
+        $('rec').classList.remove('on');
+        $('rec').textContent = '● REC';
+        toast('录制完成，已下载 · saved');
+      };
+      begin();
+      seek(0);
+      recorder.start(1000);
+      setPlaying(true);
+      $('rec').classList.add('on');
+      $('rec').textContent = '■ STOP';
+      toast('录制中：请保持此标签页在前台 · keep this tab visible while recording', 5000);
     };
-    begin();
-    seek(0);
-    recorder.start(1000);
-    setPlaying(true);
-    $('rec').classList.add('on');
-    $('rec').textContent = '■ STOP';
-    toast('录制中：请保持此标签页在前台 · keep this tab visible while recording', 5000);
-  };
+  }
 
   // ------------------------------------------------ main loop
   const playhead = $('playhead');
@@ -301,8 +328,8 @@ async function startPlayer() {
         if (recorder) recorder.stop();
       }
     }
-    const t = songTime();
-    director.renderAt(Math.max(0, t), now / 1000);
+    const t = begun ? songTime() : IDLE_T;
+    director.renderAt(Math.max(0, t), now / 1000, { clean: !begun });
     playhead.style.left = `${(Math.max(0, t) / SONG.duration) * 100}%`;
     timeEl.textContent = `${fmt(t)} / ${fmt(duration())}`;
     const beat = Math.floor(Math.max(0, t) / BEAT);

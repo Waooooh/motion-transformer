@@ -46,7 +46,7 @@ export default function generationScene() {
   const bars = new THREE.InstancedMesh(barGeo, barMat, BARS);
   bars.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(BARS * 3), 3);
   sky.add(bars);
-  const SW = 92;
+  const SW = 100;
   const barX = (i) => -SW / 2 + (i + 0.5) * (SW / BARS);
   const dist = (s) => {
     // a peaked, Zipf-like distribution whose winner depends on the step
@@ -54,7 +54,7 @@ export default function generationScene() {
     const arr = new Float32Array(BARS);
     for (let i = 0; i < BARS; i++) {
       const rank = Math.abs(i - win) + hash1(i * 7.7 + s) * 6;
-      arr[i] = 0.1 + (0.6 / (1 + rank * rank * 0.03)) * (0.35 + hash1(i + s * 13) * 0.65) + 0.08 * hash1(i * 3.3 + s * 0.7);
+      arr[i] = 0.16 + (0.6 / (1 + rank * rank * 0.03)) * (0.35 + hash1(i + s * 13) * 0.65) + 0.1 * hash1(i * 3.3 + s * 0.7);
     }
     arr[win] = 0.75 + hash1(s + 99) * 0.2;
     return { arr, win };
@@ -90,7 +90,7 @@ export default function generationScene() {
   candTitle.position.set(-852, -150, 0);
   hud.add(candTitle);
   const vocab = textMesh({ text: 'P(next token)  ·  50,257-token vocabulary', family: FAMILY.mono, size: 24 * 2, letterSpacing: 4, color: '#bfb0ff', pxPerUnit: 2, depthTest: false });
-  vocab.position.set(0, -128, 0);
+  vocab.position.set(0, -170, 0);
   hud.add(vocab);
   const cap = new Caption(CAPTIONS.generation);
   hud.add(cap.group);
@@ -119,7 +119,7 @@ export default function generationScene() {
         h *= 1 + f.kick * 0.15;
         const isWin = cur && i === cur.win;
         const hh = h * 10.5 * smoothstep(0, 0.4, lt);
-        m4.makeScale(SW / BARS * 0.72, Math.max(0.01, hh), 1);
+        m4.makeScale((SW / BARS) * 0.84, Math.max(0.01, hh), 1);
         m4.setPosition(barX(i), 0, 0);
         bars.setMatrixAt(i, m4);
         synthColor(0.25 + h * 0.9, col).multiplyScalar(isWin ? 1.8 + hit(tIn, 0, 0.25) * 3 : 1.1);

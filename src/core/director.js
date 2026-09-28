@@ -56,13 +56,15 @@ export class Director {
     }
   }
 
-  renderAt(t, seed = t) {
+  /** opts.clean: skip overlays and HUD (a clean plate, e.g. behind a menu). */
+  renderAt(t, seed = t, opts = {}) {
     const r = this.renderer;
     const f = this.features.sample(t);
     const fx = DEFAULT_FX();
     // global groove: snare pushes the colour fringes, kick adds a little bloom
     fx.aberration += f.snare * 0.3 * f.drums + f.kick * 0.1 * f.drums;
     fx.bloom += f.kick * 0.18 * f.drums;
+    fx.zoom = 1 + f.kick * 0.006 * f.drums;
     const active = this.activeAt(t);
 
     r.setRenderTarget(this.post.sceneTarget);
@@ -94,7 +96,7 @@ export class Director {
         r.clearDepth();
         r.render(s.scene, s.camera);
       }
-      if (s.overlay) {
+      if (s.overlay && !opts.clean) {
         r.clearDepth();
         r.render(s.overlay, this.hudCam);
       }
@@ -104,7 +106,7 @@ export class Director {
     r.setClearColor(0x000000, 0);
     r.clear(true, true, false);
     for (const s of frames) {
-      if (s.hud) {
+      if (s.hud && !opts.clean) {
         r.clearDepth();
         r.render(s.hud, this.hudCam);
       }

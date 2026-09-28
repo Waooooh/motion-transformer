@@ -25,7 +25,7 @@ const args = parseArgs();
 const width = +(args.w || 1920);
 const fps = +(args.fps || 30);
 const workers = Math.max(1, +(args.workers || 2));
-const crf = +(args.crf || 18);
+const crf = +(args.crf || 20);
 const out = path.resolve(ROOT, args.out || (args.audio ? 'out/attention.mp4' : 'out/attention-silent.mp4'));
 const tmp = path.resolve(ROOT, 'out/segments');
 fs.mkdirSync(tmp, { recursive: true });
@@ -63,18 +63,41 @@ const progress = () => {
   process.stdout.write(`\r  ${done}/${total} frames  ${rate.toFixed(2)} fps  ETA ${Math.floor(eta / 60)}m${String(Math.round(eta % 60)).padStart(2, '0')}s   `);
 };
 
+const withTimeout = (p, ms, what) =>
+  Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${what} timed out after ${ms / 1000}s`)), ms))]);
+
 async function worker(k, a, b) {
   const seg = path.join(tmp, `seg_${String(k).padStart(2, '0')}.mp4`);
   const enc = spawn(
     ffmpeg,
-    ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', '-c:v', 'libx264', '-preset', 'medium', '-crf', String(crf), '-pix_fmt', 'yuv420p', '-r', String(fps), seg],
+    ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-pix_fmt', 'yuv420p', '-r', String(fps), seg],
     { stdio: ['pipe', 'inherit', 'inherit'] },
   );
-  const browser = await launchBrowser({ angle: args.angle });
-  const { page } = await openFilm(browser, srv.url, { width, analysis });
+  let encError = null;
+  enc.stdin.on('error', (e) => (encError = e));
+  // A long software-GL session can occasionally wedge; every frame has a
+  // deadline and a stuck browser is replaced, then the frame is retried.
+  let browser = null;
+  let page = null;
+  const open = async () => {
+    if (browser) await browser.close().catch(() => {});
+    browser = await launchBrowser({ angle: args.angle });
+    ({ page } = await openFilm(browser, srv.url, { width, analysis }));
+  };
+  await open();
   for (let i = a; i < b; i++) {
     const tSong = toSong(i / fps);
-    const res = await page.evaluate(([t]) => window.__mt.frame(t, 'image/jpeg', 0.94), [tSong]);
+    let res = null;
+    for (let attempt = 0; !res; attempt++) {
+      try {
+        res = await withTimeout(page.evaluate(([t]) => window.__mt.frame(t, 'image/jpeg', 0.94), [tSong]), 90_000, `frame ${i}`);
+      } catch (e) {
+        if (attempt >= 3) throw e;
+        process.stdout.write(`\n  worker ${k}: ${e.message.split('\n')[0]} — restarting browser\n`);
+        await open();
+      }
+    }
+    if (encError) throw encError;
     const buf = dataUrlToBuffer(res.url);
     if (!enc.stdin.write(buf)) await new Promise((r) => enc.stdin.once('drain', r));
     done++;

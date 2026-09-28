@@ -124,9 +124,9 @@ void main() {
   float scan = 0.5 + 0.5 * sin(vUv.y * uRes.y * 3.14159265);
   c *= 1.0 - uScan * (1.0 - scan);
   c *= 1.0 - uVignette * smoothstep(0.15, 0.75, r2 * 2.0);
-  c += uFlashColor * uFlash;
   c *= 1.0 - uFade;
   vec3 o = toSRGB(c);
+  o = mix(o, uFlashColor, clamp(uFlash, 0.0, 1.0) * 0.9);
   o += (hash(vUv * uRes + fract(uSeed * 7.13) * 100.0) - 0.5) * uGrain;
   gl_FragColor = vec4(o, 1.0);
 }
@@ -144,7 +144,7 @@ export const DEFAULT_FX = () => ({
   aberration: 0.15,
   scan: 0.1,
   vignette: 0.5,
-  grain: 0.035,
+  grain: 0.02,
   flash: 0,
   flashColor: [1, 1, 1],
   fade: 0,

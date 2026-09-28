@@ -127,8 +127,8 @@ export default function galaxyScene() {
       const k1 = ease.inOutCubic(clamp(lt / 7));
       const k2 = ease.inOutCubic(clamp((lt - 6) / 6));
       const ang = lerp(0.3, 2.2, k1 * 0.6 + k2 * 0.4);
-      const dist = lerp(lerp(58, 26, k1), 14, k2);
-      const hgt = lerp(lerp(30, 7, k1), 2.2, k2);
+      const dist = lerp(lerp(30, 26, k1), 14, k2);
+      const hgt = lerp(lerp(52, 7, k1), 2.2, k2);
       camera.position.set(Math.cos(ang) * dist, hgt + f.kick * 0.15, Math.sin(ang) * dist);
       camera.lookAt(lerp(0, 4, k2), lerp(0, 0.5, k2), 0);
       camera.rotation.z += lerp(0, 0.18, k2) * Math.sin(lt * 0.5);
@@ -182,7 +182,7 @@ export default function galaxyScene() {
       }
       labels.commit();
 
-      fx.flash += hit(lt, 0, 0.45) * 1.2;
+      fx.flash += hit(lt, 0, 0.28) * 1.1;
       fx.aberration += hit(lt, 0, 0.6) * 3 + f.snare * 0.3;
       fx.bloom += 0.35;
       fx.zoom = 1 + hit(lt, 0, 0.6) * 0.06 + f.kick * 0.008;
