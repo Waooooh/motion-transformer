@@ -9,6 +9,9 @@ import { setOpacity } from '../core/hud.js';
 import { ABILITIES } from '../copy.js';
 import { chromeText } from './07-title.js';
 import { clamp, ease, lerp, smoothstep, hit, hash1, Rng } from '../core/math.js';
+import { THEME } from '../core/theme.js';
+
+const DECOR = THEME.k.decor;
 
 const SEG = 7;
 const RINGS = 40;
@@ -25,7 +28,8 @@ export default function buildupScene() {
   scene.add(tunnel);
   const ringPolys = [];
   for (let i = 0; i < RINGS; i++) {
-    ringPolys.push({ points: circlePts(0, 0, R, 96, -i * SEG), color: [PALETTE.pink, PALETTE.cyan, PALETTE.violet][i % 3], width: 2.2 });
+    const ringCols = THEME.name === 'deep' ? [PALETTE.blue, PALETTE.violet, PALETTE.cyan] : [PALETTE.pink, PALETTE.cyan, PALETTE.violet];
+    ringPolys.push({ points: circlePts(0, 0, R, 96, -i * SEG), color: ringCols[i % 3], width: 2.2 });
   }
   // longitudinal rails
   for (let k = 0; k < 12; k++) {
@@ -42,7 +46,7 @@ export default function buildupScene() {
   // attention-map tiles on the walls (one repeating segment pattern)
   const perSeg = 26;
   const tileGeo = new THREE.PlaneGeometry(1.5, 0.9);
-  const tileMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const tileMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55 * DECOR, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   const TN = perSeg * RINGS;
   const tiles = new THREE.InstancedMesh(tileGeo, tileMat, TN);
   tiles.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(TN * 3), 3);
@@ -94,14 +98,16 @@ export default function buildupScene() {
       const intensity = 0.7 + lt * 0.12;
       for (let i = 0; i < RINGS; i++) {
         const flash = Math.exp(-Math.pow(((i + beat * 3) % RINGS) - bp * 3, 2)) * 0.8;
-        rings.set(i, 0, 1, (intensity + f.kick * 1.2 + flash) * (i < 30 ? 1 : (RINGS - i) / 10), -1);
+        rings.set(i, 0, 1, (intensity + f.kick * 1.2 + flash) * DECOR * (i < 30 ? 1 : (RINGS - i) / 10), -1);
       }
-      for (let k = RINGS; k < RINGS + 12; k++) rings.set(k, 0, 1, 0.5 + lt * 0.05 + f.snare * 0.5, -1);
+      for (let k = RINGS; k < RINGS + 12; k++) rings.set(k, 0, 1, (0.5 + lt * 0.05 + f.snare * 0.5) * DECOR, -1);
       rings.commit();
       for (let i = 0; i < TN; i++) {
         const b = base[i];
         const flick = 0.35 + 0.65 * Math.max(0, Math.sin(lt * 5 + b.ph));
-        synthColor(b.v * 0.8 + 0.2, tmpC).multiplyScalar(flick * (0.8 + f.kick * 0.8 + lt * 0.06));
+        if (THEME.name === 'deep') tmpC.setRGB(0.12 + b.v * 0.25, 0.2 + b.v * 0.35, 0.55 + b.v * 0.45);
+        else synthColor(b.v * 0.8 + 0.2, tmpC);
+        tmpC.multiplyScalar(flick * (0.8 + f.kick * 0.8 + lt * 0.06));
         tiles.setColorAt(i, tmpC);
       }
       tiles.instanceColor.needsUpdate = true;

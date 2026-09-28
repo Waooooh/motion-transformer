@@ -2,6 +2,7 @@
 // (with per-line reveal / intensity / travelling pulse), and heatmap panels
 // for matrices.
 import * as THREE from 'three';
+import { THEME } from './theme.js';
 
 export const PALETTE = {
   bgDeep: new THREE.Color('#05010f'),
@@ -518,7 +519,7 @@ export function glowTexture() {
 export function glowSprite(color, scale = 1, opacity = 1) {
   const m = new THREE.SpriteMaterial({
     map: glowTexture(),
-    color,
+    color: new THREE.Color(color).multiplyScalar(THEME.k.sprite),
     transparent: true,
     opacity,
     depthWrite: false,

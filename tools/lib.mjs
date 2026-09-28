@@ -69,14 +69,14 @@ export async function launchBrowser({ angle = process.env.MT_ANGLE || 'swiftshad
   return chromium.launch(opts);
 }
 
-export async function openFilm(browser, url, { width = 1920, analysis = null } = {}) {
+export async function openFilm(browser, url, { width = 1920, analysis = null, look = null } = {}) {
   const height = Math.round((width * 9) / 16);
   const page = await browser.newPage({ viewport: { width: Math.min(width, 1920), height: Math.min(height, 1080) } });
   page.on('console', (m) => {
     if (m.type() === 'error' || m.type() === 'warning') console.log(`[page ${m.type()}] ${m.text()}`);
   });
   page.on('pageerror', (e) => console.log('[page error]', e.message));
-  await page.goto(`${url}?mode=render`);
+  await page.goto(`${url}?mode=render${look ? `&look=${encodeURIComponent(look)}` : ''}`);
   await page.waitForFunction(() => window.__mt && window.__mt.ready, null, { timeout: 60000 });
   const info = await page.evaluate((o) => window.__mt.init(o), { w: width, analysis });
   return { page, info };

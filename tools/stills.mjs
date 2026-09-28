@@ -22,7 +22,7 @@ else {
 const dist = args['no-build'] ? path.join(ROOT, 'dist') : await buildApp();
 const srv = await serveDir(dist);
 const browser = await launchBrowser();
-const { page } = await openFilm(browser, srv.url, { width });
+const { page } = await openFilm(browser, srv.url, { width, look: args.look });
 for (const t of times) {
   const t0 = Date.now();
   const res = await page.evaluate((tt) => window.__mt.frame(tt, 'image/png'), t);

@@ -1,6 +1,9 @@
 // Post-processing: HDR scene → bloom (dual-filter) → tone map → HUD → final
 // grade (chromatic aberration, scanlines, vignette, flash, glitch, grain).
 import * as THREE from 'three';
+import { THEME } from './theme.js';
+
+const K = THEME.k;
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
@@ -94,7 +97,7 @@ void main() {
 const FINAL = /* glsl */ `
 uniform sampler2D tComp; uniform sampler2D tHud; uniform vec2 uRes; uniform float uSeed;
 uniform float uAberration; uniform float uScan; uniform float uVignette; uniform float uGrain;
-uniform float uFlash; uniform vec3 uFlashColor; uniform float uFade; uniform float uGlitch;
+uniform float uFlash; uniform vec3 uFlashColor; uniform float uFlashGain; uniform float uFlashMix; uniform float uFade; uniform float uGlitch;
 uniform float uZoom; uniform vec2 uShake;
 varying vec2 vUv;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -124,9 +127,9 @@ void main() {
   float scan = 0.5 + 0.5 * sin(vUv.y * uRes.y * 3.14159265);
   c *= 1.0 - uScan * (1.0 - scan);
   c *= 1.0 - uVignette * smoothstep(0.15, 0.75, r2 * 2.0);
-  c *= 1.0 - uFade;
+  c *= (1.0 + uFlash * uFlashGain) * (1.0 - uFade);
   vec3 o = toSRGB(c);
-  o = mix(o, uFlashColor, clamp(uFlash, 0.0, 1.0) * 0.9);
+  o = mix(o, uFlashColor, clamp(uFlash, 0.0, 1.0) * uFlashMix);
   o += (hash(vUv * uRes + fract(uSeed * 7.13) * 100.0) - 0.5) * uGrain;
   gl_FragColor = vec4(o, 1.0);
 }
@@ -151,6 +154,7 @@ export const DEFAULT_FX = () => ({
   glitch: 0,
   zoom: 1,
   shake: [0, 0],
+  ...THEME.fx,
 });
 
 function fsMaterial(frag, uniforms) {
@@ -229,6 +233,8 @@ export class Post {
       uGrain: { value: 0 },
       uFlash: { value: 0 },
       uFlashColor: { value: new THREE.Color(1, 1, 1) },
+      uFlashGain: { value: K.flashGain ?? 0 },
+      uFlashMix: { value: K.flashMix ?? 0.9 },
       uFade: { value: 0 },
       uGlitch: { value: 0 },
       uZoom: { value: 1 },
@@ -268,7 +274,7 @@ export class Post {
     const u = this.mComp.uniforms;
     u.tScene.value = src.texture;
     u.tBloom.value = low.texture;
-    u.uBloom.value = fx.bloom / d.length;
+    u.uBloom.value = (fx.bloom * K.bloom) / d.length;
     u.uExposure.value = fx.exposure;
     u.uSaturation.value = fx.saturation;
     u.uContrast.value = fx.contrast;
@@ -282,14 +288,14 @@ export class Post {
     u.tComp.value = this.compTarget.texture;
     u.tHud.value = this.hudTarget.texture;
     u.uSeed.value = seed;
-    u.uAberration.value = fx.aberration;
-    u.uScan.value = fx.scan;
+    u.uAberration.value = fx.aberration * K.aberration;
+    u.uScan.value = fx.scan * K.scan;
     u.uVignette.value = fx.vignette;
     u.uGrain.value = fx.grain;
-    u.uFlash.value = fx.flash;
+    u.uFlash.value = fx.flash * K.flash;
     u.uFlashColor.value.setRGB(...fx.flashColor);
     u.uFade.value = fx.fade;
-    u.uGlitch.value = fx.glitch;
+    u.uGlitch.value = fx.glitch * K.glitch;
     u.uZoom.value = fx.zoom;
     u.uShake.value.set(...fx.shake);
     this.pass(this.mFinal, null);

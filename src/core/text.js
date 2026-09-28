@@ -2,6 +2,9 @@
 // onto planes. Static labels are cached; DynamicText re-draws only when its
 // string changes (counters, typing effects).
 import * as THREE from 'three';
+import { THEME } from './theme.js';
+
+const GLOW_K = THEME.k.textGlow;
 
 export const FAMILY = {
   display: 'Orbitron',
@@ -63,9 +66,9 @@ export function drawTextCanvas(opts) {
     letterSpacing = 0,
     align = 'center',
     lineHeight = 1.2,
-    glow = 0,
+    glow: glowIn = 0,
     glowColor = color,
-    glowPasses = 2,
+    glowPasses: passesIn = 2,
     stroke = 0,
     strokeColor = '#000',
     strokeOnly = false,
@@ -73,6 +76,8 @@ export function drawTextCanvas(opts) {
     fixedWidth = 0,
     fixedHeight = 0,
   } = opts;
+  const glow = glowIn * GLOW_K;
+  const glowPasses = GLOW_K < 1 ? Math.max(1, Math.round(passesIn * GLOW_K + 0.4)) : passesIn;
   const font = fontString(opts);
   const lines = String(text).split('\n');
   const pad = opts.padding ?? Math.ceil(glow * 2 + stroke + size * 0.15);
@@ -240,7 +245,7 @@ export class DynamicText {
     if (o.glow) {
       ctx.save();
       ctx.shadowColor = o.glowColor || o.color || '#fff';
-      ctx.shadowBlur = o.glow;
+      ctx.shadowBlur = o.glow * GLOW_K;
       ctx.fillStyle = o.glowColor || o.color || '#fff';
       paint();
       ctx.restore();

@@ -13,6 +13,7 @@
 //   --from/--to      time range in seconds of the *output* (file time), default whole song
 //   --crf <n>        x264 quality (lower = better), default 18
 //   --angle <name>   Chromium ANGLE backend: swiftshader (CPU, default) | default | vulkan | gl | metal
+//   --look <name>    deep (default) | neon — see src/core/theme.js
 //   --no-build       reuse dist/ as is
 import fs from 'node:fs';
 import path from 'node:path';
@@ -51,7 +52,10 @@ const last = Math.round(to * fps); // exclusive
 const total = last - first;
 console.log(`${total} frames @ ${width}×${Math.round((width * 9) / 16)} ${fps} fps, ${workers} worker(s) → ${path.relative(ROOT, out)}`);
 
-const dist = args['no-build'] ? path.join(ROOT, 'dist') : await buildApp();
+const built = args['no-build'] ? path.join(ROOT, 'dist') : await buildApp();
+const dist = path.join(ROOT, 'out', 'render-dist');
+fs.rmSync(dist, { recursive: true, force: true });
+fs.cpSync(built, dist, { recursive: true });
 const srv = await serveDir(dist);
 
 let done = 0;
@@ -82,7 +86,7 @@ async function worker(k, a, b) {
   const open = async () => {
     if (browser) await browser.close().catch(() => {});
     browser = await launchBrowser({ angle: args.angle });
-    ({ page } = await openFilm(browser, srv.url, { width, analysis }));
+    ({ page } = await openFilm(browser, srv.url, { width, analysis, look: args.look }));
   };
   await open();
   for (let i = a; i < b; i++) {

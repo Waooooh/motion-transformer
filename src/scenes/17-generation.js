@@ -9,6 +9,9 @@ import { SynthwaveEnv } from '../core/env.js';
 import { Caption } from '../core/hud.js';
 import { CAPTIONS, GENERATED, GENERATED_ZH } from '../copy.js';
 import { clamp, ease, lerp, smoothstep, hit, hash1 } from '../core/math.js';
+import { THEME } from '../core/theme.js';
+
+const DECOR = THEME.k.decor;
 
 const BARS = 96;
 const ALTS = [' the', ' a', ' it', ' we', ' and', ' to', ' was', ' they', ' is', ' of', ' in', ' all'];
@@ -122,7 +125,7 @@ export default function generationScene() {
         m4.makeScale((SW / BARS) * 0.84, Math.max(0.01, hh), 1);
         m4.setPosition(barX(i), 0, 0);
         bars.setMatrixAt(i, m4);
-        synthColor(0.25 + h * 0.9, col).multiplyScalar(isWin ? 1.8 + hit(tIn, 0, 0.25) * 3 : 1.1);
+        synthColor(0.25 + h * 0.9, col).multiplyScalar((isWin ? 1.8 + hit(tIn, 0, 0.25) * 3 : 1.1) * (isWin ? Math.sqrt(DECOR) : DECOR));
         bars.setColorAt(i, col);
       }
       bars.instanceMatrix.needsUpdate = true;

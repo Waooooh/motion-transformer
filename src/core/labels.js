@@ -2,6 +2,7 @@
 // canvas atlas and drawn as camera-facing instanced quads.
 import * as THREE from 'three';
 import { fontString, measureText } from './text.js';
+import { THEME } from './theme.js';
 
 export class LabelAtlas {
   constructor(strings, { family, weight = 500, size = 64, color = '#ffffff', glow = 0, glowColor = null, padding = 10, maxWidth = 2048 }) {
@@ -35,7 +36,7 @@ export class LabelAtlas {
       if (glow) {
         ctx.save();
         ctx.shadowColor = glowColor || color;
-        ctx.shadowBlur = glow;
+        ctx.shadowBlur = glow * THEME.k.textGlow;
         ctx.fillStyle = glowColor || color;
         ctx.fillText(it.s, cx, cy);
         ctx.restore();

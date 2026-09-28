@@ -4,17 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Attention · Transformer</title>
-    <meta name="description" content="A synthwave film about neural networks and the Transformer, rendered live with WebGL and synced to “Hong Kong Story” by Lazer Boomerang." />
+    <meta name="description" content="A film about neural networks and the Transformer, rendered live with WebGL and synced to “Hong Kong Story” by Lazer Boomerang." />
     <style>
       :root {
-        --bg: #05010f;
-        --ink: #f3ecff;
-        --dim: #a99be0;
-        --pink: #ff4fd8;
-        --cyan: #1ee3ff;
-        --amber: #ffb627;
-        --panel: rgba(12, 4, 30, 0.78);
-        --line: rgba(255, 79, 216, 0.35);
+        --bg: #010208;
+        --ink: #e8ecff;
+        --dim: #8c96c4;
+        --pink: #8fa6ff;
+        --cyan: #7fd0e6;
+        --amber: #d9bd8c;
+        --panel: rgba(4, 7, 20, 0.82);
+        --line: rgba(143, 166, 255, 0.26);
         color-scheme: dark;
       }
       * { box-sizing: border-box; }
@@ -26,15 +26,15 @@
 
       /* start card */
       #intro { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
-        background: radial-gradient(ellipse at 50% 120%, rgba(255, 42, 157, 0.35), transparent 60%),
-          linear-gradient(180deg, rgba(5, 1, 15, 0.55), rgba(5, 1, 15, 0.92)); z-index: 5; transition: opacity 0.6s; }
+        background: radial-gradient(ellipse at 50% 125%, rgba(38, 56, 130, 0.32), transparent 62%),
+          linear-gradient(180deg, rgba(1, 2, 8, 0.6), rgba(1, 2, 8, 0.94)); z-index: 5; transition: opacity 0.6s; }
       #intro.hidden { opacity: 0; pointer-events: none; }
       .card { width: min(720px, 100%); text-align: center; }
       .kicker { font-family: 'Share Tech Mono', monospace; letter-spacing: 0.35em; color: var(--cyan); font-size: 13px; text-transform: uppercase; }
       h1 { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: clamp(44px, 11vw, 104px); margin: 10px 0 4px; letter-spacing: 0.06em;
-        background: linear-gradient(180deg, #fff 0%, #ffe6fb 45%, #ff4fd8 52%, #7b2cff 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
-        filter: drop-shadow(0 0 18px rgba(255, 79, 216, 0.55)); }
-      .script { font-family: 'Mr Dafoe', cursive; color: var(--pink); font-size: clamp(34px, 7vw, 58px); margin-top: -18px; text-shadow: 0 0 14px rgba(255, 79, 216, 0.9); transform: rotate(-6deg); }
+        background: linear-gradient(180deg, #ffffff 0%, #e3e8ff 46%, #8fa6ff 56%, #3f4d96 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+        filter: drop-shadow(0 0 10px rgba(120, 140, 255, 0.22)); }
+      .script { font-family: 'Mr Dafoe', cursive; color: #d6c8ff; font-size: clamp(34px, 7vw, 58px); margin-top: -18px; text-shadow: 0 0 6px rgba(150, 140, 255, 0.35); transform: rotate(-6deg); }
       .sub { font-family: 'Noto Sans SC', sans-serif; color: var(--ink); font-size: clamp(15px, 2.6vw, 19px); margin: 14px 0 2px; letter-spacing: 0.08em; }
       .sub-en { color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; font-size: 13px; font-weight: 600; }
       .music { margin: 22px auto 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); max-width: 560px; font-size: 15px; }
@@ -43,11 +43,11 @@
       .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
       button:disabled { opacity: 0.45; cursor: progress; }
       button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-      button, .btn { font: 600 16px 'Rajdhani', 'Noto Sans SC', sans-serif; letter-spacing: 0.08em; color: var(--ink); background: rgba(255, 79, 216, 0.12);
+      button, .btn { font: 600 16px 'Rajdhani', 'Noto Sans SC', sans-serif; letter-spacing: 0.08em; color: var(--ink); background: rgba(143, 166, 255, 0.08);
         border: 1px solid var(--pink); border-radius: 999px; padding: 11px 22px; cursor: pointer; transition: background 0.2s, box-shadow 0.2s; }
-      button:hover, .btn:hover { background: rgba(255, 79, 216, 0.28); box-shadow: 0 0 18px rgba(255, 79, 216, 0.5); }
-      button.alt { border-color: var(--cyan); background: rgba(30, 227, 255, 0.08); }
-      button.alt:hover { background: rgba(30, 227, 255, 0.2); box-shadow: 0 0 18px rgba(30, 227, 255, 0.45); }
+      button:hover, .btn:hover { background: rgba(143, 166, 255, 0.18); box-shadow: 0 0 10px rgba(143, 166, 255, 0.22); }
+      button.alt { border-color: var(--cyan); background: rgba(127, 208, 230, 0.06); }
+      button.alt:hover { background: rgba(127, 208, 230, 0.16); box-shadow: 0 0 10px rgba(127, 208, 230, 0.2); }
       .note { color: var(--dim); font-size: 13px; margin-top: 14px; line-height: 1.6; font-family: 'Noto Sans SC', sans-serif; }
       #status { font-family: 'Share Tech Mono', monospace; color: var(--cyan); margin-top: 10px; min-height: 18px; font-size: 13px; }
       body.dragging #intro { box-shadow: inset 0 0 0 3px var(--cyan); }
@@ -63,9 +63,9 @@
       #timeline { position: relative; flex: 1; height: 22px; cursor: pointer; border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, 0.05); }
       #timeline .sec { position: absolute; top: 0; bottom: 0; opacity: 0.55; }
       #timeline .sec span { position: absolute; left: 4px; top: 3px; font-size: 10px; color: #fff; opacity: 0.85; white-space: nowrap; }
-      #playhead { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; box-shadow: 0 0 8px #fff; }
+      #playhead { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; box-shadow: 0 0 4px rgba(255, 255, 255, 0.6); }
       select { font: inherit; color: var(--ink); background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line); border-radius: 8px; padding: 5px; }
-      #rec.on { background: rgba(255, 42, 109, 0.5); border-color: #ff2a6d; }
+      #rec.on { background: rgba(200, 60, 90, 0.45); border-color: #d05070; }
       #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line);
         padding: 8px 14px; border-radius: 10px; font-family: 'Noto Sans SC', sans-serif; font-size: 14px; opacity: 0; transition: opacity 0.3s; z-index: 6; pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
       #toast.show { opacity: 1; }
@@ -82,7 +82,7 @@
 
     <div id="intro">
       <div class="card">
-        <div class="kicker">a synthwave film · 80 bpm · 3:56</div>
+        <div class="kicker">a short film · 80 bpm · 3:56</div>
         <h1>ATTENTION</h1>
         <div class="script">Transformer</div>
         <div class="sub">从一个数字，到注意力 —— 神经网络与 Transformer 之美</div>

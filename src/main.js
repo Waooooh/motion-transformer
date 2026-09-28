@@ -115,7 +115,7 @@ async function startPlayer() {
 
   // timeline with section colours
   const tl = $('timeline');
-  const secColors = { intro: '#3b2a7a', drop1: '#ff2a9d', groove: '#7b2cff', drop2: '#ff8a1f', outro: '#1e8fff', tail: '#1b3a6a' };
+  const secColors = { intro: '#1d2550', drop1: '#4a3f86', groove: '#2a4274', drop2: '#6a4d7e', outro: '#23506e', tail: '#141c3c' };
   const secNames = { intro: '起源 ORIGINS', drop1: 'TRANSFORMER', groove: '深度 DEPTH', drop2: '高潮 CLIMAX', outro: '公式 EQUATION', tail: '' };
   for (const s of SECTIONS) {
     const el = document.createElement('div');

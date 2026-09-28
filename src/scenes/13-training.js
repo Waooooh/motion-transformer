@@ -8,6 +8,9 @@ import { V } from '../core/shapes.js';
 import { Caption, setOpacity } from '../core/hud.js';
 import { CAPTIONS, TRAINING_PROMPTS } from '../copy.js';
 import { clamp, ease, lerp, smoothstep, hit, grouped } from '../core/math.js';
+import { THEME } from '../core/theme.js';
+
+const DEEP = THEME.name === 'deep';
 
 const HEIGHT_GLSL = /* glsl */ `
 float lossH(vec2 p) {
@@ -31,17 +34,21 @@ void main() {
 const FRAG = /* glsl */ `
 uniform float uPulse;
 uniform float uGlow;
+uniform vec3 uLow;
+uniform vec3 uMid;
+uniform vec3 uHigh;
+uniform float uLineGlow;
 varying vec3 vP;
 void main() {
   vec2 gc = vP.xz / 1.6;
   vec2 fw = fwidth(gc);
   vec2 d = abs(fract(gc - 0.5) - 0.5) / max(fw, 1e-4);
   float line = 1.0 - clamp(min(d.x, d.y) - 0.4, 0.0, 1.0);
-  float glow = exp(-min(d.x, d.y) * 0.4) * 0.3;
+  float glow = exp(-min(d.x, d.y) * 0.4) * uLineGlow;
   float h = clamp(vP.y / 7.5, 0.0, 1.0);
-  vec3 low = vec3(0.05, 0.95, 1.0);
-  vec3 mid = vec3(0.55, 0.2, 1.0);
-  vec3 high = vec3(1.0, 0.16, 0.62);
+  vec3 low = uLow;
+  vec3 mid = uMid;
+  vec3 high = uHigh;
   vec3 c = mix(low, mid, smoothstep(0.0, 0.45, h));
   c = mix(c, high, smoothstep(0.45, 1.0, h));
   float fade = 1.0 - smoothstep(30.0, 42.0, length(vP.xz));
@@ -61,7 +68,18 @@ export default function trainingScene() {
 
   const land = new THREE.Mesh(
     new THREE.PlaneGeometry(84, 84, 220, 220).rotateX(-Math.PI / 2),
-    new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, uniforms: { uPulse: { value: 0 }, uGlow: { value: 1 } } }),
+    new THREE.ShaderMaterial({
+      vertexShader: VERT,
+      fragmentShader: FRAG,
+      uniforms: {
+        uPulse: { value: 0 },
+        uGlow: { value: DEEP ? 0.55 : 1 },
+        uLineGlow: { value: DEEP ? 0.08 : 0.3 },
+        uLow: { value: DEEP ? new THREE.Color('#3fb8d0') : new THREE.Color(0.05, 0.95, 1.0) },
+        uMid: { value: DEEP ? new THREE.Color('#4a55b8') : new THREE.Color(0.55, 0.2, 1.0) },
+        uHigh: { value: DEEP ? new THREE.Color('#6a3f86') : new THREE.Color(1.0, 0.16, 0.62) },
+      },
+    }),
   );
   land.position.z = -22;
   scene.add(land);
@@ -140,7 +158,7 @@ export default function trainingScene() {
       env.update({ t: lt + 96, sunY: 12, sunScale: 1.0, sunIntensity: 1.4, glow: 0.6, mountain: 0 });
       env.setCamera(camera, height);
       sparks.setCamera(camera, height);
-      land.material.uniforms.uPulse.value = f.kick * 0.6;
+      land.material.uniforms.uPulse.value = f.kick * 0.6 * THEME.k.pulse;
 
       // one gradient step per beat: the ball dashes, then settles
       const beat = Math.floor(lt / 0.75);

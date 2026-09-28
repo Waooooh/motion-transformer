@@ -1,8 +1,13 @@
-// The recurring synthwave world: gradient sky, stars, striped sun, far ridge,
-// and a scrolling neon-grid terrain with wireframe mountains on both sides.
+// The recurring world: gradient sky, stars, a sun (striped synthwave sun or a
+// dark eclipse, depending on the look), a far ridge, and a scrolling grid
+// terrain with wireframe mountains on both sides. Colours and glow levels
+// come from theme.js.
 import * as THREE from 'three';
 import { GlowPoints } from './materials.js';
 import { Rng } from './math.js';
+import { THEME } from './theme.js';
+
+const K = THEME.k;
 
 const NOISE = /* glsl */ `
 vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
@@ -69,6 +74,8 @@ uniform float uFade;
 uniform float uSunX;
 uniform vec3 uSunCol;
 uniform float uRoad;
+uniform float uLineGlow;
+uniform float uStreak;
 varying vec3 vWorld;
 varying float vH;
 void main() {
@@ -76,7 +83,7 @@ void main() {
   vec2 fw = fwidth(gc);
   vec2 dist = abs(fract(gc - 0.5) - 0.5) / max(fw, 1e-4);
   float line = 1.0 - clamp(min(dist.x, dist.y) - 0.3, 0.0, 1.0);
-  float glow = exp(-min(dist.x, dist.y) * 0.35) * 0.35;
+  float glow = exp(-min(dist.x, dist.y) * 0.35) * uLineGlow;
   float far = clamp(max(fw.x, fw.y) * 1.4, 0.0, 1.0);
   float g = (line + glow) * (1.0 - far * 0.85);
   float depth = -vWorld.z;
@@ -86,7 +93,7 @@ void main() {
   vec3 col = uFloor + lineCol * g * uIntensity * (1.0 + uPulse * 1.4);
   // sun reflection streak on the floor
   float streak = exp(-pow((vWorld.x - uSunX) / (6.0 + depth * 0.06), 2.0)) * (1.0 - mount) * smoothstep(20.0, 320.0, depth);
-  col += uSunCol * streak * 0.35;
+  col += uSunCol * streak * 0.35 * uStreak;
   col = mix(col, uFog, fog);
   gl_FragColor = vec4(col * (1.0 - uFade), 1.0);
 }
@@ -107,11 +114,12 @@ uniform vec3 uHorizon;
 uniform float uGlow;
 uniform float uFade;
 uniform float uHorizonY;
+uniform float uSpread;
 varying vec3 vDir;
 void main() {
   float h = vDir.y - uHorizonY;
-  vec3 col = mix(uHorizon, uMid, smoothstep(0.0, 0.16, h));
-  col = mix(col, uZenith, smoothstep(0.12, 0.55, h));
+  vec3 col = mix(uHorizon, uMid, smoothstep(0.0, uSpread, h));
+  col = mix(col, uZenith, smoothstep(uSpread * 0.75, 0.55, h));
   col += uHorizon * exp(-abs(h) * 28.0) * uGlow;
   if (h < 0.0) col = mix(col, uZenith * 0.5, smoothstep(0.0, -0.08, h));
   gl_FragColor = vec4(col * (1.0 - uFade), 1.0);
@@ -132,12 +140,33 @@ uniform vec3 uTop;
 uniform vec3 uMidC;
 uniform vec3 uBottom;
 uniform float uCut;
+uniform float uEclipse;
+uniform vec3 uRim;
 varying vec2 vUv;
 void main() {
   vec2 p = (vUv * 2.0 - 1.0) * 2.4;
   float r = length(p);
   float aa = fwidth(r) * 1.5;
   float disc = smoothstep(1.0 + aa, 1.0 - aa, r);
+  float cut = smoothstep(uCut - 0.01, uCut + 0.01, p.y);
+  if (uEclipse > 0.5) {
+    // a dark planet: shaded as a sphere lit from behind, so only a thin
+    // crescent and a faint atmosphere catch the light; alpha occludes the
+    // stars and sky behind it
+    vec3 n = vec3(p, sqrt(max(0.0, 1.0 - r * r)));
+    vec3 L = normalize(vec3(-0.5, 0.62, -0.6));
+    float crescent = pow(max(0.0, dot(n, L)), 1.6);
+    float limb = pow(1.0 - n.z, 5.0);
+    vec3 surf = vec3(0.006, 0.009, 0.02) + uRim * (crescent * 0.6 + limb * 0.05) * uIntensity;
+    float outside = 1.0 - disc;
+    float lit = 0.5 + 0.5 * dot(normalize(p + 1e-5), normalize(L.xy));
+    float atm = exp(-max(r - 1.0, 0.0) * 14.0) * outside * (0.08 + 0.92 * pow(lit, 3.0)) * 0.55;
+    float halo = exp(-max(r - 1.0, 0.0) * 2.2) * outside * 0.05 * (1.0 - smoothstep(1.6, 2.35, r));
+    vec3 light = uRim * (atm + halo) * uHalo;
+    float a = disc * cut;
+    gl_FragColor = vec4((surf * a + light * cut) * (1.0 - uFade), a * (1.0 - uFade));
+    return;
+  }
   float y = p.y * 0.5 + 0.5;
   vec3 col = mix(uBottom, uMidC, smoothstep(0.0, 0.55, y));
   col = mix(col, uTop, smoothstep(0.5, 1.0, y));
@@ -148,22 +177,23 @@ void main() {
   gap *= step(0.42, by);
   disc *= 1.0 - gap;
   // cut the bottom part below the horizon line (uCut in disc space)
-  disc *= smoothstep(uCut - 0.01, uCut + 0.01, p.y);
+  disc *= cut;
   float halo = exp(-max(r - 0.95, 0.0) * 3.2) * uHalo * (1.0 - disc) * (1.0 - smoothstep(1.5, 2.35, r));
   vec3 c = col * disc * uIntensity + mix(uBottom, uMidC, 0.5) * halo;
-  gl_FragColor = vec4(c * (1.0 - uFade), 1.0);
+  gl_FragColor = vec4(c * (1.0 - uFade), 0.0);
 }
 `;
 
 const RIDGE_FRAG = /* glsl */ `
 uniform vec3 uFill;
 uniform vec3 uRim;
+uniform float uRimK;
 uniform float uFade;
 varying vec2 vUv;
 varying float vTop;
 void main() {
   float rim = exp(-vTop * 60.0);
-  gl_FragColor = vec4((uFill + uRim * rim * 1.6) * (1.0 - uFade), 1.0);
+  gl_FragColor = vec4((uFill + uRim * rim * 1.6 * uRimK) * (1.0 - uFade), 1.0);
 }
 `;
 const RIDGE_VERT = /* glsl */ `
@@ -173,18 +203,7 @@ varying float vTop;
 void main() { vUv = uv; vTop = aTop; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `;
 
-export const ENV_DEFAULTS = {
-  grid: '#ff2bd6',
-  grid2: '#29e0ff',
-  floor: '#0a0218',
-  fog: '#3a0a4f',
-  zenith: '#03010c',
-  mid: '#1b0736',
-  horizon: '#ff3d8b',
-  sunTop: '#ffe86b',
-  sunMid: '#ff8a3d',
-  sunBottom: '#ff2a9d',
-};
+export const ENV_DEFAULTS = THEME.env;
 
 export class SynthwaveEnv {
   constructor(opts = {}) {
@@ -200,6 +219,7 @@ export class SynthwaveEnv {
       uGlow: { value: 0.35 },
       uFade: { value: 0 },
       uHorizonY: { value: 0.0 },
+      uSpread: { value: o.skySpread ?? 0.16 },
     };
     const sky = new THREE.Mesh(
       new THREE.SphereGeometry(900, 48, 24),
@@ -225,8 +245,8 @@ export class SynthwaveEnv {
       const y = Math.pow(rng.float(0.02, 1), 0.7);
       const r = Math.sqrt(1 - y * y);
       const R = 700;
-      const warm = rng.next() < 0.25;
-      const s = rng.float(1.2, 4.2) * (rng.next() < 0.04 ? 2.2 : 1);
+      const warm = rng.next() < o.warmStars;
+      const s = rng.float(1.2, 4.2) * (rng.next() < 0.04 ? 2.2 : 1) * (THEME.name === 'deep' ? 0.75 : 1);
       this.stars.setPoint(i, Math.cos(th) * r * R, y * R * 0.9 + 10, Math.sin(th) * r * R, warm ? 1 : 0.75, warm ? 0.7 : 0.85, 1, s, 1);
       this.starBase.push({ s, a: rng.float(0.35, 1), ph: rng.float(0, 100), sp: rng.float(0.5, 2.5), y });
     }
@@ -245,6 +265,8 @@ export class SynthwaveEnv {
       uMidC: { value: new THREE.Color(o.sunMid) },
       uBottom: { value: new THREE.Color(o.sunBottom) },
       uCut: { value: -2 },
+      uEclipse: { value: o.eclipse },
+      uRim: { value: new THREE.Color(o.rim) },
     };
     this.sun = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
@@ -254,7 +276,11 @@ export class SynthwaveEnv {
         uniforms: this.sunU,
         transparent: true,
         depthWrite: false,
-        blending: THREE.AdditiveBlending,
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
       }),
     );
     this.sun.renderOrder = -80;
@@ -265,8 +291,9 @@ export class SynthwaveEnv {
 
     // far ridge silhouette in front of the sun
     this.ridgeU = {
-      uFill: { value: new THREE.Color('#07010f') },
-      uRim: { value: new THREE.Color(o.grid) },
+      uFill: { value: new THREE.Color(o.ridgeFill) },
+      uRim: { value: new THREE.Color(o.ridgeRim) },
+      uRimK: { value: K.ridgeRim },
       uFade: { value: 0 },
     };
     this.ridge = this.makeRidge(rng);
@@ -282,13 +309,15 @@ export class SynthwaveEnv {
       uGrid2: { value: new THREE.Color(o.grid2) },
       uFloor: { value: new THREE.Color(o.floor) },
       uFog: { value: new THREE.Color(o.fog) },
-      uFogNear: { value: 60 },
-      uFogFar: { value: 420 },
+      uFogNear: { value: o.fogNear },
+      uFogFar: { value: o.fogFar },
       uPulse: { value: 0 },
-      uIntensity: { value: 1.4 },
+      uIntensity: { value: 1.4 * K.grid },
       uFade: { value: 0 },
       uSunX: { value: 0 },
       uSunCol: { value: new THREE.Color(o.sunMid) },
+      uLineGlow: { value: o.lineGlow },
+      uStreak: { value: K.streak },
     };
     const tg = new THREE.PlaneGeometry(420, 460, 170, 190);
     tg.rotateX(-Math.PI / 2);
@@ -352,28 +381,28 @@ export class SynthwaveEnv {
     const t = p.t ?? 0;
     const tu = this.terrainU;
     tu.uScroll.value = p.scroll ?? t * 8;
-    tu.uPulse.value = p.pulse ?? 0;
+    tu.uPulse.value = (p.pulse ?? 0) * K.pulse;
     tu.uFade.value = p.fade ?? 0;
     if (p.mountain !== undefined) tu.uMountain.value = p.mountain;
     if (p.road !== undefined) tu.uRoad.value = p.road;
-    if (p.gridIntensity !== undefined) tu.uIntensity.value = p.gridIntensity;
+    if (p.gridIntensity !== undefined) tu.uIntensity.value = p.gridIntensity * K.grid;
     if (p.fogNear !== undefined) tu.uFogNear.value = p.fogNear;
     if (p.fogFar !== undefined) tu.uFogFar.value = p.fogFar;
     this.skyU.uFade.value = p.fade ?? 0;
-    this.skyU.uGlow.value = p.glow ?? 0.35;
+    this.skyU.uGlow.value = (p.glow ?? 0.35) * K.horizon;
     this.ridgeU.uFade.value = p.fade ?? 0;
     const su = this.sunU;
     su.uTime.value = t;
     su.uFade.value = p.fade ?? 0;
-    su.uIntensity.value = p.sunIntensity ?? 1.6;
-    su.uHalo.value = p.sunHalo ?? 0.9;
+    su.uIntensity.value = (p.sunIntensity ?? 1.6) * K.sun;
+    su.uHalo.value = (p.sunHalo ?? 0.9) * K.halo;
     if (p.bands !== undefined) su.uBands.value = p.bands;
     const sunY = p.sunY ?? 40;
     this.sun.position.y = sunY;
     const sc = (p.sunScale ?? 1) * this.sunRadius * 2 * 2.4;
     this.sun.scale.setScalar(sc);
     // stars twinkle
-    const sa = p.starAlpha ?? 1;
+    const sa = (p.starAlpha ?? 1) * K.stars;
     const st = this.stars;
     for (let i = 0; i < this.starBase.length; i++) {
       const b = this.starBase[i];

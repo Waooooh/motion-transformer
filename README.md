@@ -42,6 +42,9 @@ npm run stills -- --times 38,70,140                         # 导出单帧 PNG
 npm run analyze -- audio/hong-kong-story.mp3                # 只看分析结果（BPM / 偏移 / 匹配度）
 ```
 
+画面有两种风格（`src/core/theme.js`）：默认 **deep**（深蓝夜空、暗淡的网格、背光行星、克制的光晕与闪白），
+以及原版霓虹合成器浪潮 **neon**。播放器地址加 `?look=neon`，或渲染时加 `--look neon` 即可切换。
+
 渲染器用 Playwright 驱动无头 Chromium，逐帧截取画面并交给 ffmpeg（H.264）编码，最后混入音频。
 默认使用 CPU 软件渲染（SwiftShader），在有显卡的机器上可加 `--angle default`（或 `vulkan` / `metal` / `gl`）大幅提速。
 需要本机有 `ffmpeg`（或设置 `FFMPEG_PATH`），以及 Playwright 的 Chromium（`npx playwright install chromium`）。
